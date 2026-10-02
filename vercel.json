@@ -1,7 +1,13 @@
 {
   "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index?path=:path*"
+    }
+  ],
   "functions": {
-    "api/[...path].js": {
+    "api/index.js": {
       "includeFiles": "public/**"
     }
   }
