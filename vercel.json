@@ -1,3 +1,7 @@
 {
-  "outputDirectory": "public"
+  "functions": {
+    "api/[...path].js": {
+      "includeFiles": "public/**"
+    }
+  }
 }

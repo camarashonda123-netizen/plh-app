@@ -28,10 +28,10 @@ Otros usuarios (mismo comando, cambia el rol):
 Contraseñas con bcrypt (12 rondas); sesión en cookie httpOnly + SameSite estricta (JWT de 8 h); permisos validados en el servidor en cada petición; límite de 10 intentos de login por 15 min; cabeceras de seguridad (Helmet); consultas parametrizadas; bitácora en `audit_log`.
 
 ## Publicar en Vercel
-1. Importa el repositorio en Vercel y deja la carpeta raíz como directorio del proyecto. `vercel.json` publica `public/`; `api/[...path].js` atiende la API Express.
+1. Importa el repositorio en Vercel y deja la carpeta raíz como directorio del proyecto. La función `api/[...path].js` atiende la API Express e incluye los archivos estáticos de `public/`.
 2. En **Settings > Environment Variables**, configura `DATABASE_URL` con la cadena pooled de Neon y `JWT_SECRET` con un valor generado por `openssl rand -hex 32`. Añade `CUTOFF` solo si quieres cambiar `10:00`. No subas `.env` a Git.
 3. Ejecuta `npm run db:migrate` una sola vez contra Neon y crea el primer usuario desde un entorno seguro con esas variables: `PW='...' npm run user:create -- admin@club.pe "Administración" admin`.
-4. Despliega desde Vercel o ejecuta `npx vercel --prod`. La app y `/api` comparten dominio; deja `public/config.js` con `PLH_API_BASE` vacío. Vercel sirve por HTTPS y configura la cookie segura en producción.
+4. En **Build & Development Settings**, no fuerces `public` como **Output Directory**; deja el valor predeterminado para que Vercel encuentre la función Node. Despliega desde Vercel o ejecuta `npx vercel --prod`. La app y `/api` comparten dominio; deja `public/config.js` con `PLH_API_BASE` vacío. Vercel sirve por HTTPS y configura la cookie segura en producción.
 
 Para desarrollo local, instala las dependencias, crea `.env` con las mismas variables y ejecuta `npm run dev`.
 
