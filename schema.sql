@@ -1,0 +1,86 @@
+-- Playa Honda · Control de ingresos · Esquema para Neon (PostgreSQL 15+)
+-- Ejecutar UNA vez: npm run db:migrate  (o pegar en el SQL Editor de Neon)
+begin;
+create extension if not exists pgcrypto;
+
+create type user_role as enum ('admin','porteria','propietario','cctv');
+create type pass_type as enum ('Invitado','Obra','Mantenimiento','Materiales','Cotización');
+create type log_kind  as enum ('in','out');
+
+create function lima_today() returns date language sql stable
+as $$ select (now() at time zone 'America/Lima')::date $$;
+
+create table units (
+  id uuid primary key default gen_random_uuid(),
+  code int unique,
+  owner_name text not null,
+  lot text not null,
+  partida text,
+  is_club boolean not null default false,
+  apto boolean not null default true,
+  exception_until date,           -- acta de compromiso: habilita hasta esta fecha
+  reason text,                    -- motivo: solo lo ve administración
+  created_at timestamptz not null default now()
+);
+
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  full_name text not null,
+  role user_role not null,
+  unit_id uuid references units(id),
+  password_hash text not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  constraint propietario_requires_unit check (role <> 'propietario' or unit_id is not null)
+);
+create unique index users_email_uq on users (lower(email));
+
+create table passes (
+  id uuid primary key default gen_random_uuid(),
+  type pass_type not null,
+  unit_id uuid not null references units(id),
+  name text not null,
+  doc text not null default '',
+  work text not null default '',
+  visit_date date not null default lima_today(),
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+create index passes_date_unit_ix on passes (visit_date, unit_id);
+
+create table access_logs (
+  id bigint generated always as identity primary key,
+  pass_id uuid not null references passes(id) on delete cascade,
+  kind log_kind not null,
+  people int not null check (people between 1 and 500),
+  logged_at timestamptz not null default now(),
+  logged_by uuid references users(id)
+);
+create index access_logs_pass_ix on access_logs (pass_id, logged_at);
+
+create table daily_reports (
+  report_date date primary key,
+  notes text not null default '',
+  signer text not null default 'Operador de CCTV',
+  updated_by uuid references users(id),
+  updated_at timestamptz not null default now()
+);
+
+create table audit_log (
+  id bigint generated always as identity primary key,
+  user_id uuid,
+  action text not null,
+  detail jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- Datos de ejemplo (borra o edita según tu padrón real)
+insert into units (code, owner_name, lot, partida, is_club, apto, exception_until) values
+  (null,'Club Playa Honda','Áreas del club',null,true,true,null),
+  (14,'Fam. Prado Ríos','Mz.A2 Lote4','20000014',false,true,null),
+  (32,'Sr. Álvaro Mena','Mz.G1 Lote2','20000032',false,true,null),
+  (57,'Fam. Luna Torres','Mz.A3 Lote2','20000057',false,true,null),
+  (76,'Sr. Víctor Lara','Mz.E1 Lote2','20000076',false,false,null),
+  (88,'Srta. Valeria Campos','Mz.C7 Lote3','20000088',false,false,lima_today()+7);
+commit;
